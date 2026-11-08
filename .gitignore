@@ -1,0 +1,8 @@
+# 数据与缓存（数据在仓库外统一数据集目录，见 README「数据」一节）
+data/
+results/cache/
+results/models/*.pt
+*.part
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,0 +1,74 @@
+{
+  "files": [
+    "train_FD001.txt",
+    "test_FD001.txt",
+    "RUL_FD001.txt",
+    "train_FD002.txt",
+    "test_FD002.txt",
+    "RUL_FD002.txt",
+    "train_FD003.txt",
+    "test_FD003.txt",
+    "RUL_FD003.txt",
+    "train_FD004.txt",
+    "test_FD004.txt",
+    "RUL_FD004.txt"
+  ],
+  "subsets": {
+    "FD001": {
+      "train_shape": [
+        20631,
+        26
+      ],
+      "test_shape": [
+        13096,
+        26
+      ],
+      "n_train_units": 100,
+      "n_test_units": 100,
+      "rul_rows": 100,
+      "rul_max": 145.0
+    },
+    "FD002": {
+      "train_shape": [
+        53759,
+        26
+      ],
+      "test_shape": [
+        33991,
+        26
+      ],
+      "n_train_units": 260,
+      "n_test_units": 259,
+      "rul_rows": 259,
+      "rul_max": 194.0
+    },
+    "FD003": {
+      "train_shape": [
+        24720,
+        26
+      ],
+      "test_shape": [
+        16596,
+        26
+      ],
+      "n_train_units": 100,
+      "n_test_units": 100,
+      "rul_rows": 100,
+      "rul_max": 145.0
+    },
+    "FD004": {
+      "train_shape": [
+        61249,
+        26
+      ],
+      "test_shape": [
+        41214,
+        26
+      ],
+      "n_train_units": 249,
+      "n_test_units": 248,
+      "rul_rows": 248,
+      "rul_max": 195.0
+    }
+  }
+}

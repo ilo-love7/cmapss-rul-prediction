@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this benchmark, please cite the CMAPSS dataset paper and this repository."
+title: "CMAPSS 涡扇发动机退化建模与 RUL 预测基准 (N2)"
+authors:
+  - name: "ilo-love7"
+type: software
+repository-code: "https://github.com/ilo-love7/cmapss-rul-prediction"
+license: MIT
+version: 1.0.0
+date-released: "2026-11-08"
+references:
+  - type: conference-paper
+    title: "Damage propagation modeling for aircraft engine run-to-failure simulation"
+    authors:
+      - family-names: Saxena
+        given-names: Abhinav
+      - family-names: Goebel
+        given-names: Kai
+      - family-names: Simon
+        given-names: Don
+      - family-names: Eklund
+        given-names: Neil
+    year: 2008
+    doi: "10.1109/PHM.2008.4711414"
+    conference:
+      name: "International Conference on Prognostics and Health Management (PHM08)"

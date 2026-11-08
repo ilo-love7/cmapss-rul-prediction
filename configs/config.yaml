@@ -1,0 +1,33 @@
+# N2 涡扇 RUL 预测配置
+data_root: "D:/项目/02_数据集/01_国际公开集/CMAPSS_涡扇"
+raw_subdir: "raw"
+subsets: ["FD001", "FD002", "FD003", "FD004"]
+
+# 序列化
+window: 30          # 输入序列长度（周期数）
+stride: 1
+rul_cap: 125        # piecewise 线性 RUL 标签封顶
+val_frac_units: 0.2 # 验证集按引擎划分的比例
+
+# 传感器筛选
+sensor_std_min: 0.01   # 近常数传感器剔除阈值（原始量纲）
+
+# 工况归一化
+n_conditions: 6     # FD002/FD004 的工况簇数；FD001/FD003 单工况
+cluster_op_settings: true
+
+# 训练
+seeds: [0, 1, 2]
+lstm:
+  hidden: 128
+  layers: 2
+  dropout: 0.2
+  lr: 0.001
+  weight_decay: 0.0001
+  batch: 128
+  epochs: 40
+  patience: 8
+
+# 评估
+phm08_early_penalty: 13.0
+phm08_late_penalty: 10.0

@@ -1,0 +1,6 @@
+
+===== FD001: 训练 14042 序列 / 验证 3689 / 测试 100 =====
+  LSTM_MSE seed=0: rmse=14.64 phm08=422.6 bias=+4.11 ep=9 (221.6s)
+  LSTM_MSE seed=1: rmse=14.30 phm08=405.9 bias=+4.89 ep=7 (172.5s)
+  → LSTM_MSE mean: rmse=14.47±0.17 phm08=414.3
+  LSTM_PHM08 seed=0: rmse=13.96 phm08=337.0 bias=+0.28 ep=19 (291.6s)
