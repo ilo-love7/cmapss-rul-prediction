@@ -9,7 +9,7 @@
 NASA CMAPSS 涡扇退化仿真（FD001–FD004）上「多传感器运行轨迹 → 剩余寿命（RUL）」的
 完整基准：**4 个子集 × 3 类基线 × LSTM/GRU × 2 种损失**，按子集分解 RMSE 与 PHM08 score。
 
-**先看这 5 件事：**
+**先看这 7 件事：**
 
 1. **链接坑**：NASA PCoE 仓库的「#17 Turbofan Degradation-2」是 15.76 GB 的 N-CMAPSS，
    经典 FD001–FD004 在 **#6**（12.4 MB）。数据直链与验证见 [`_说明.md`](../docs/) 与仓库 `docs/`。
@@ -19,6 +19,15 @@ NASA CMAPSS 涡扇退化仿真（FD001–FD004）上「多传感器运行轨迹 
    直接当损失，FD001 的偏差从 +4.9 cycle 拉到 +0.3，score 降 ~20%。
 5. **相似度匹配基线不弱**：零学习的滑窗相关匹配在宏 RMSE 上就能到 34.9
    （常数 64.9 / 线性外推 42.2），且天然偏早——按 PHM08 口径反而更安全。
+6. **末窗 RMSE 会骗人**（v1.1）：全寿命滚动预测后，临近失效 RMSE 只有 **4–10**，
+   早期（真值 >200）是 116–163——早期误差来自标签封顶（cap=125），不是模型坏。
+   运维真正需要的"临近失效准不准"，答案比头号数字好 1.5–3 倍。
+7. **三模型分歧就是免费的置信度**（v1.1）：LSTM_MSE/LSTM_PHM08/GRU_MSE 的预测 std
+   与误差显著正相关（Spearman ρ 0.14–0.49），高分歧三分位的 MAE 是低分歧的 1.4–2.4 倍；
+   三模型集成还把宏 RMSE 再降 0.33（14.05→13.72）。
+8. **零样本跨子集迁移不可部署**（v1.1）：FD001→FD003 缺口 +8.2、FD002→FD004 +20.8 RMSE，
+   且迁移预测**系统性偏晚**（+4～+17 cycle）——PHM08 score 暴涨 32–177 倍。
+   对比 N1 轴承跨载荷几乎不掉点：涡扇的域偏移难得多。
 
 ## 数据
 
@@ -86,6 +95,16 @@ NASA PCoE「Turbofan Engine Degradation Simulation」（Saxena & Goebel 2008）�
 
 图：`fig09_baseline_vs_deep.png`（基线 vs 深度 RMSE/score）、`fig10_bias.png`（偏差分布）、
 `fig07_deep_rmse.png`、`fig06_baselines_rmse.png`、`fig02_piecewise_rul.png`（RUL 封顶示意）等 21 张，见 `results/figures/`。
+
+**v1.1 深化（scripts/06–08）：**
+
+- **滚动预测**（fig12）：LSTM_PHM08 按真值 RUL 分桶的 RMSE——0–25: 4.2/6.1/7.7/9.7，
+  50–75: 18–24，>200: 116–163（FD001/2/3/4）。末窗 13–16 是全寿命混合产物。
+- **集成**（fig13）：三模型平均宏 RMSE 13.72（最优单模型 14.05），PHM08 3/4 子集最优。
+- **不确定性**（fig13）：三模型预测 std 的三分位 MAE 严格单调（如 FD004: 6.2→11.0→14.8），
+  Spearman ρ 0.14–0.49 全显著——模型分歧是可用的置信度代理。
+- **跨子集迁移**（fig14）：零样本迁移 RMSE 21.1/36.6/24.0（FD001→FD003 / FD002→FD004 /
+  FD001→FD002），oracle 13.0/15.8/14.0，缺口 +8.2/+20.8/+10.1，且全部偏晚。
 <!-- RESULTS_TABLE_END -->
 
 评估协议：训练集内部按引擎 80/20 划分验证（早停）；测试集每引擎取**末窗**预测 RUL，
@@ -109,6 +128,9 @@ python scripts/02_baselines.py        # 常数 / 线性 HI / 相似度匹配
 python scripts/03_train_lstm.py       # LSTM/GRU × MSE/PHM08（CPU 可跑，约 2-3 h）
 python scripts/04_error_analysis.py   # 对比表与偏差分析
 python scripts/05_make_figures.py     # hero 图
+python scripts/06_rolling.py          # v1.1 全寿命滚动预测（复用 03 权重）
+python scripts/07_ensemble.py         # v1.1 三模型集成 + 不确定性代理（复用 03 权重）
+python scripts/08_cross_transfer.py   # v1.1 跨子集迁移 + oracle 对照（重训，约 25 min）
 ```
 
 或 `bash run_all.sh`。测试：`pytest tests -q`（18 项，纯合成信号，不依赖数据集）。
@@ -146,7 +168,10 @@ results/           metrics/（json）+ figures/（png）
 3. **相似度匹配偏早**（平均 −17 cycle）：训练引擎失效前的相关峰往往提前出现。
    按 RMSE 它不如好 LSTM，按 PHM08 score 它常常反超线性基线——**指标选择改变结论**。
 4. **readme.txt 的 FD004 计数是错的**（写 248/249，实际 249/248），以数据文件为准。
-5. **未做**：注意力/Transformer 变体、跨子集迁移（FD001→FD002）、不确定性区间。
+5. **v1.1 已补**：滚动预测（临近失效 RMSE 4–10）、三模型集成（宏 13.72）、
+   模型分歧作不确定性代理（ρ 0.14–0.49）、跨子集迁移缺口量化（+8～+21 且偏晚）。
+   **仍未做**：注意力/Transformer 变体、真分位数回归（当前是模型分歧代理）、
+   在线门控/重标定、域适应/few-shot 适配（迁移缺口已量化但未缩小）。
 
 ## 引用
 
