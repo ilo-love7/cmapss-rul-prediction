@@ -37,17 +37,18 @@ def main() -> None:
 
     # 图：RMSE 对比（基线 vs 深度）
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+    names = list(base.keys())
     models = list(table["FD001"].keys())
     x = np.arange(len(base))
     w = 0.8 / len(models)
     colors = {"Constant_cap": "#BBBBBB", "Linear_HI": "#F2A93B", "Similarity": "#72B7B2",
               "LSTM_MSE": "#4C78A8", "LSTM_PHM08": "#E45756", "GRU_MSE": "#9E7BAC"}
     for j, m in enumerate(models):
-        axes[0].bar(x + j * w, [table[n][m]["rmse"] for n in x], w, label=m, color=colors.get(m))
-        axes[1].bar(x + j * w, [table[n][m]["phm08"] for n in x], w, label=m, color=colors.get(m))
+        axes[0].bar(x + j * w, [table[names[n]][m]["rmse"] for n in x], w, label=m, color=colors.get(m))
+        axes[1].bar(x + j * w, [table[names[n]][m]["phm08"] for n in x], w, label=m, color=colors.get(m))
     for ax, title, ylab in zip(axes, ["RMSE 对比", "PHM08 score 对比"], ["RMSE", "score"]):
         ax.set_xticks(x + w * (len(models) - 1) / 2)
-        ax.set_xticklabels(list(base.keys()))
+        ax.set_xticklabels(names)
         ax.set_title(title)
         ax.set_ylabel(ylab)
     axes[0].legend(fontsize=7, ncol=2)
@@ -56,10 +57,10 @@ def main() -> None:
     # 图：偏差分布（各模型 mean_error，>0 偏晚）
     fig, ax = plt.subplots(figsize=(8, 4.2))
     for j, m in enumerate(models):
-        ax.bar(x + j * w, [table[n][m]["mean_error"] for n in x], w, label=m, color=colors.get(m))
+        ax.bar(x + j * w, [table[names[n]][m]["mean_error"] for n in x], w, label=m, color=colors.get(m))
     ax.axhline(0, color="black", linewidth=0.8)
     ax.set_xticks(x + w * (len(models) - 1) / 2)
-    ax.set_xticklabels(list(base.keys()))
+    ax.set_xticklabels(names)
     ax.set_ylabel("预测误差（pred − true，>0 偏晚更危险）")
     ax.set_title("各模型早晚偏差对比")
     ax.legend(fontsize=7, ncol=2)

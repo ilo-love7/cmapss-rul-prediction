@@ -2,6 +2,7 @@
 data/
 results/cache/
 results/models/*.pt
+results/*.log
 *.part
 __pycache__/
 *.pyc
