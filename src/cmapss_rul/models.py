@@ -109,7 +109,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 class SeqRegressor(nn.Module):
     def __init__(self, n_features: int, hidden: int = 128, layers: int = 2,
-                 dropout: float = 0.2, cell: str = "lstm", bidirectional: bool = False):
+                 dropout: float = 0.2, cell: str = "lstm", bidirectional: bool = False,
+                 out_dim: int = 1):
         super().__init__()
         self.bidirectional = bidirectional
         rnn_cls = nn.LSTM if cell == "lstm" else nn.GRU
@@ -122,13 +123,64 @@ class SeqRegressor(nn.Module):
             nn.Linear(hidden * (2 if bidirectional else 1), hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden, 1),
+            nn.Linear(hidden, out_dim),
         )
 
     def forward(self, x):
         out, _ = self.rnn(x)
         h = out[:, -1, :]  # 末时间步
-        return self.head(h).squeeze(-1)
+        y = self.head(h)
+        return y.squeeze(-1) if y.shape[-1] == 1 else y
+
+
+class AttentionRegressor(nn.Module):
+    """LSTM/GRU + 加性注意力池化：对全部时间步加权，而非只取末步。"""
+
+    def __init__(self, n_features: int, hidden: int = 64, layers: int = 1,
+                 dropout: float = 0.2, cell: str = "lstm", attn_dim: int = 64):
+        super().__init__()
+        rnn_cls = nn.LSTM if cell == "lstm" else nn.GRU
+        self.rnn = rnn_cls(
+            input_size=n_features, hidden_size=hidden, num_layers=layers,
+            batch_first=True, dropout=dropout if layers > 1 else 0.0,
+        )
+        self.attn_w = nn.Linear(hidden, attn_dim)
+        self.attn_v = nn.Linear(attn_dim, 1, bias=False)
+        self.head = nn.Sequential(
+            nn.Linear(hidden, hidden), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(hidden, 1),
+        )
+
+    def forward(self, x):
+        out, _ = self.rnn(x)                       # (B, T, H)
+        score = self.attn_v(torch.tanh(self.attn_w(out))).squeeze(-1)  # (B, T)
+        alpha = torch.softmax(score, dim=1)
+        ctx = (alpha.unsqueeze(-1) * out).sum(dim=1)                   # (B, H)
+        return self.head(ctx).squeeze(-1)
+
+
+class TransformerRegressor(nn.Module):
+    """紧凑 Transformer 编码器 + 末步读出。d_model=64、2 层，参数量与 LSTM 相当。"""
+
+    def __init__(self, n_features: int, d_model: int = 64, nhead: int = 4,
+                 layers: int = 2, dropout: float = 0.2, max_len: int = 64):
+        super().__init__()
+        self.inp = nn.Linear(n_features, d_model)
+        self.pos = nn.Parameter(torch.zeros(1, max_len, d_model))
+        enc = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=nhead, dim_feedforward=d_model * 4,
+            dropout=dropout, batch_first=True)
+        self.enc = nn.TransformerEncoder(enc, num_layers=layers)
+        self.head = nn.Sequential(
+            nn.Linear(d_model, d_model), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(d_model, 1),
+        )
+
+    def forward(self, x):
+        T = x.shape[1]
+        h = self.inp(x) + self.pos[:, :T, :]
+        h = self.enc(h)
+        return self.head(h[:, -1, :]).squeeze(-1)
 
 
 def phm08_loss(pred: torch.Tensor, target: torch.Tensor,
@@ -139,6 +191,17 @@ def phm08_loss(pred: torch.Tensor, target: torch.Tensor,
     return s.mean()
 
 
+QUANTILES = (0.05, 0.5, 0.95)
+
+
+def pinball_loss(pred_q: torch.Tensor, target: torch.Tensor,
+                 quantiles: tuple[float, ...] = QUANTILES) -> torch.Tensor:
+    """分位数损失（pinball）。pred_q (B, Q)，target (B,)。"""
+    e = target.unsqueeze(-1) - pred_q                       # (B, Q)
+    q = torch.tensor(quantiles, dtype=pred_q.dtype, device=pred_q.device)
+    return torch.maximum(q * e, (q - 1.0) * e).mean()
+
+
 @dataclass
 class TrainResult:
     model: nn.Module
@@ -147,16 +210,34 @@ class TrainResult:
     best_val: float
 
 
+def build_model(arch: str, n_features: int, hidden: int = 128, layers: int = 2,
+                dropout: float = 0.2, cell: str = "lstm",
+                bidirectional: bool = False, out_dim: int = 1) -> nn.Module:
+    """arch: rnn | attn | transformer。"""
+    if arch == "attn":
+        return AttentionRegressor(n_features, hidden=hidden, layers=layers, dropout=dropout, cell=cell)
+    if arch == "transformer":
+        return TransformerRegressor(n_features, d_model=hidden, layers=max(1, min(layers, 3)),
+                                    dropout=dropout)
+    return SeqRegressor(n_features, hidden=hidden, layers=layers, dropout=dropout,
+                        cell=cell, bidirectional=bidirectional, out_dim=out_dim)
+
+
 def train_regressor(X: np.ndarray, y: np.ndarray, X_val: np.ndarray, y_val: np.ndarray,
                     cell: str = "lstm", loss_name: str = "mse",
                     hidden: int = 128, layers: int = 2, dropout: float = 0.2,
                     lr: float = 1e-3, weight_decay: float = 1e-4,
                     batch: int = 128, epochs: int = 40, patience: int = 8,
                     seed: int = 0, device: str | None = None,
-                    bidirectional: bool = False, verbose: bool = False) -> TrainResult:
+                    bidirectional: bool = False, verbose: bool = False,
+                    select_by: str = "rmse", arch: str = "rnn",
+                    quantiles: tuple[float, ...] = QUANTILES) -> TrainResult:
+    """select_by: rmse（默认，与 v1.0/v1.1 一致）| score（验证集 PHM08 分数）。
+    loss_name: mse | phm08 | pinball（pinball 时输出 Q 个分位数头）。"""
     torch.manual_seed(seed)
     np.random.seed(seed)
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    out_dim = len(quantiles) if loss_name == "pinball" else 1
 
     Xtr = torch.tensor(X, dtype=torch.float32)
     ytr = torch.tensor(y, dtype=torch.float32)
@@ -165,13 +246,18 @@ def train_regressor(X: np.ndarray, y: np.ndarray, X_val: np.ndarray, y_val: np.n
     train_loader = DataLoader(TensorDataset(Xtr, ytr), batch_size=batch, shuffle=True)
     val_loader = DataLoader(TensorDataset(Xva, yva), batch_size=512, shuffle=False)
 
-    model = SeqRegressor(X.shape[2], hidden=hidden, layers=layers, dropout=dropout,
-                         cell=cell, bidirectional=bidirectional).to(device)
+    model = build_model(arch, X.shape[2], hidden=hidden, layers=layers, dropout=dropout,
+                        cell=cell, bidirectional=bidirectional, out_dim=out_dim).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
-    loss_fn = (lambda p, t: phm08_loss(p, t)) if loss_name == "phm08" else nn.MSELoss()
+    if loss_name == "phm08":
+        loss_fn = lambda p, t: phm08_loss(p, t)          # noqa: E731
+    elif loss_name == "pinball":
+        loss_fn = lambda p, t: pinball_loss(p, t, quantiles)  # noqa: E731
+    else:
+        loss_fn = nn.MSELoss()
 
-    history = {"train_loss": [], "val_rmse": []}
+    history = {"train_loss": [], "val_rmse": [], "val_score": []}
     best_state, best_val, best_epoch, bad = None, float("inf"), -1, 0
 
     for ep in range(1, epochs + 1):
@@ -180,7 +266,8 @@ def train_regressor(X: np.ndarray, y: np.ndarray, X_val: np.ndarray, y_val: np.n
         for xb, yb in train_loader:
             xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad()
-            loss = loss_fn(model(xb), yb)
+            out = model(xb)
+            loss = loss_fn(out, yb)
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
@@ -191,15 +278,24 @@ def train_regressor(X: np.ndarray, y: np.ndarray, X_val: np.ndarray, y_val: np.n
         preds, trues = [], []
         with torch.no_grad():
             for xb, yb in val_loader:
-                preds.append(model(xb.to(device)).cpu().numpy())
+                out = model(xb.to(device))
+                if loss_name == "pinball":
+                    out = out[:, quantiles.index(0.5)] if 0.5 in quantiles else out.mean(dim=-1)
+                preds.append(out.cpu().numpy())
                 trues.append(yb.numpy())
-        vrmse = float(np.sqrt(np.mean((np.concatenate(preds) - np.concatenate(trues)) ** 2)))
+        pv = np.concatenate(preds)
+        tv = np.concatenate(trues)
+        vrmse = float(np.sqrt(np.mean((pv - tv) ** 2)))
+        vscore = float(np.sum(np.where(pv - tv < 0, np.exp(-(pv - tv) / 13.0) - 1.0,
+                                       np.exp((pv - tv) / 10.0) - 1.0)))
         history["train_loss"].append(running / len(Xtr))
         history["val_rmse"].append(vrmse)
+        history["val_score"].append(vscore)
+        metric = vrmse if select_by == "rmse" else vscore
         if verbose:
-            print(f"  ep{ep:02d} loss={running/len(Xtr):.4f} val_rmse={vrmse:.3f}")
-        if vrmse < best_val - 1e-5:
-            best_val, best_epoch, bad = vrmse, ep, 0
+            print(f"  ep{ep:02d} loss={running/len(Xtr):.4f} val_rmse={vrmse:.3f} val_score={vscore:.1f}")
+        if metric < best_val - 1e-5:
+            best_val, best_epoch, bad = metric, ep, 0
             best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
         else:
             bad += 1

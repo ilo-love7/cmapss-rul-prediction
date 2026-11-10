@@ -1,6 +1,6 @@
 # CMAPSS 涡扇发动机退化建模与 RUL 预测（N2）
 
-![tests](https://img.shields.io/badge/tests-18%20passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![torch](https://img.shields.io/badge/torch-2.10%2Bcpu-red)
 
@@ -28,6 +28,13 @@ NASA CMAPSS 涡扇退化仿真（FD001–FD004）上「多传感器运行轨迹 
 8. **零样本跨子集迁移不可部署**（v1.1）：FD001→FD003 缺口 +8.2、FD002→FD004 +20.8 RMSE，
    且迁移预测**系统性偏晚**（+4～+17 cycle）——PHM08 score 暴涨 32–177 倍。
    对比 N1 轴承跨载荷几乎不掉点：涡扇的域偏移难得多。
+9. **选检核点比换损失更值钱**（v1.2）：早停判据从验证 RMSE 换成验证 PHM08 score，
+   测试 score 免费降 17–29%；最优格对 v1.0 基线 FD001 414→277（−33%）、FD004 1529→1040。
+   优先级：**按最终指标选检核点 > 换损失 > 换结构**。
+10. **"清零偏差"是 RMSE 思维的陷阱**（v1.2）：分数选模型最优位置在偏早侧，
+    后验偏差校正推向偏晚重罚区，score 反噬 9–27%——偏差的方向比大小重要。
+11. **结构升级在小数据上无效；对称共形 4/4 命中名义覆盖**（v1.2）：LSTM+Attn ≈ 取末步，
+    Transformer score 1.3–2.8 倍；共形-对称区间覆盖 0.890–0.923 全落 0.90±0.05。
 
 ## 数据
 
@@ -105,6 +112,16 @@ NASA PCoE「Turbofan Engine Degradation Simulation」（Saxena & Goebel 2008）�
   Spearman ρ 0.14–0.49 全显著——模型分歧是可用的置信度代理。
 - **跨子集迁移**（fig14）：零样本迁移 RMSE 21.1/36.6/24.0（FD001→FD003 / FD002→FD004 /
   FD001→FD002），oracle 13.0/15.8/14.0，缺口 +8.2/+20.8/+10.1，且全部偏晚。
+**v1.2 深化（scripts/09–11）：**
+
+- **分数感知选模**（fig21）：损失×选模 2×2 矩阵——FD001 mse_rmse 414 / mse_score 292 /
+  phm08_rmse 338 / **phm08_score 277**；FD004 1529/1218/1252/**1040**。选模判据贡献大于损失。
+- **偏差校正**（fig21）：只在 mse+RMSE选 上微赚 1–3%，分数选模型全部反噬 9–27%。
+- **注意力/Transformer**（fig22）：LSTM+Attn 与取末步等价；Transformer 全面劣化
+  （FD001 score 414→1055，最优轮次 2–9，种子方差 ±234）——负结果。
+- **区间校准**（fig23）：90% 名义覆盖——共形-对称 0.890/0.915/0.923/0.910（4/4 落入
+  0.90±0.05，比 naive 窄 14–23%）；pinball 最窄（25.6–42.2）但 FD003 覆盖 0.810 欠覆盖。
+
 <!-- RESULTS_TABLE_END -->
 
 评估协议：训练集内部按引擎 80/20 划分验证（早停）；测试集每引擎取**末窗**预测 RUL，
@@ -131,9 +148,12 @@ python scripts/05_make_figures.py     # hero 图
 python scripts/06_rolling.py          # v1.1 全寿命滚动预测（复用 03 权重）
 python scripts/07_ensemble.py         # v1.1 三模型集成 + 不确定性代理（复用 03 权重）
 python scripts/08_cross_transfer.py   # v1.1 跨子集迁移 + oracle 对照（重训，约 25 min）
+python scripts/09_score_aware.py      # v1.2 损失×选模准则矩阵 + 偏差校正（重训，约 2 h）
+python scripts/10_attention.py        # v1.2 注意力池化 / Transformer vs LSTM（重训，约 2 h）
+python scripts/11_calibration.py      # v1.2 预测区间校准：共形/分位数（复用 09 权重 + pinball）
 ```
 
-或 `bash run_all.sh`。测试：`pytest tests -q`（18 项，纯合成信号，不依赖数据集）。
+或 `bash run_all.sh`。测试：`pytest tests -q`（28 项，纯合成信号，不依赖数据集）。
 
 ## 方法
 
@@ -154,7 +174,7 @@ python scripts/08_cross_transfer.py   # v1.1 跨子集迁移 + oracle 对照（�
 src/cmapss_rul/    io / preprocessing / models / evaluation / plots
 scripts/           00–05 流水线（校验/EDA/基线/深度/误差分析/汇总图）
 configs/           config.yaml
-tests/             18 项单测（运动学无关，纯合成信号）
+tests/             28 项单测（合成信号 + 分位数损失/共形覆盖/模型形状）
 reports/           基准评测报告-N2.md / 工作记录-N2.md
 results/           metrics/（json）+ figures/（png）
 ```
@@ -170,8 +190,10 @@ results/           metrics/（json）+ figures/（png）
 4. **readme.txt 的 FD004 计数是错的**（写 248/249，实际 249/248），以数据文件为准。
 5. **v1.1 已补**：滚动预测（临近失效 RMSE 4–10）、三模型集成（宏 13.72）、
    模型分歧作不确定性代理（ρ 0.14–0.49）、跨子集迁移缺口量化（+8～+21 且偏晚）。
-   **仍未做**：注意力/Transformer 变体、真分位数回归（当前是模型分歧代理）、
-   在线门控/重标定、域适应/few-shot 适配（迁移缺口已量化但未缩小）。
+6. **v1.2 已补**：分数选模矩阵（FD001 414→277）、偏差校正的反噬机制、
+   注意力/Transformer 对照（负结果）、真分位数回归 + 共形区间（4/4 命中名义覆盖）。
+   **仍未做**：pinball+共形二段缩放、加权/协变量自适应共形、在线门控/重标定、
+   域适应/few-shot 适配（迁移缺口已量化但未缩小）；选模矩阵在 FD002/003 只有对角。
 
 ## 引用
 
