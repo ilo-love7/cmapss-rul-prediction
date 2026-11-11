@@ -126,6 +126,11 @@ class SeqRegressor(nn.Module):
             nn.Linear(hidden, out_dim),
         )
 
+    def encode(self, x):
+        """窗口表征（末步隐层，投影前）——域适应对齐用。"""
+        out, _ = self.rnn(x)
+        return out[:, -1, :]
+
     def forward(self, x):
         out, _ = self.rnn(x)
         h = out[:, -1, :]  # 末时间步

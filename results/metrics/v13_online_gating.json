@@ -1,0 +1,204 @@
+{
+  "results": {
+    "FD001": {
+      "n_units": 100,
+      "n_windows": 10196,
+      "postprocess": {
+        "raw": {
+          "rmse_raw_truth": 46.40972321258269,
+          "phm08_raw": 55862219.85619272,
+          "mean_error": -24.313994226478137,
+          "rmse_capped_truth": 13.440608432308881
+        },
+        "monotone": {
+          "rmse_raw_truth": 48.48700103662863,
+          "phm08_raw": 58496755.07265957,
+          "mean_error": -23.76007867710597,
+          "rmse_capped_truth": 16.01481823252252
+        },
+        "recal": {
+          "rmse_raw_truth": 50.31408622756153,
+          "phm08_raw": 81261271.47453496,
+          "mean_error": -29.264736553929563,
+          "rmse_capped_truth": 15.58021840354725
+        },
+        "both": {
+          "rmse_raw_truth": 51.70281660983745,
+          "phm08_raw": 83262390.57433522,
+          "mean_error": -29.134953856702037,
+          "rmse_capped_truth": 17.883143427936396
+        }
+      },
+      "gating": {
+        "ensemble_std": {
+          "aurc": 51.96239782000407,
+          "risk_at_cov80": 48.666310402592764,
+          "risk_at_cov90": 47.416665287557585,
+          "cov_at_risk15": 9.807767752059631e-05,
+          "spearman": -0.2011578889552328
+        },
+        "pinball_width": {
+          "aurc": 47.74998375768769,
+          "risk_at_cov80": 49.33671498003302,
+          "risk_at_cov90": 48.00540506481025,
+          "cov_at_risk15": 0.06129854845037269,
+          "spearman": -0.1097812093905933
+        }
+      },
+      "constraint_violation": {
+        "raw": 0.7359837074945459,
+        "both": 0.0
+      }
+    },
+    "FD002": {
+      "n_units": 253,
+      "n_windows": 26505,
+      "postprocess": {
+        "raw": {
+          "rmse_raw_truth": 52.92753398910214,
+          "phm08_raw": 909873783.9129479,
+          "mean_error": -29.181535640695685,
+          "rmse_capped_truth": 15.535059194483237
+        },
+        "monotone": {
+          "rmse_raw_truth": 55.59246994594336,
+          "phm08_raw": 1021614021.8954189,
+          "mean_error": -28.91258915669287,
+          "rmse_capped_truth": 18.855112683961238
+        },
+        "recal": {
+          "rmse_raw_truth": 57.05389180370722,
+          "phm08_raw": 1332167735.5864396,
+          "mean_error": -34.008130145716095,
+          "rmse_capped_truth": 18.119854296360554
+        },
+        "both": {
+          "rmse_raw_truth": 58.8056800689235,
+          "phm08_raw": 1413774502.0596104,
+          "mean_error": -34.21455243341295,
+          "rmse_capped_truth": 20.80793674006465
+        }
+      },
+      "gating": {
+        "ensemble_std": {
+          "aurc": 61.66820075087195,
+          "risk_at_cov80": 56.73282125426858,
+          "risk_at_cov90": 54.82108656685265,
+          "cov_at_risk15": 3.772873042822109e-05,
+          "spearman": -0.21166253715239589
+        },
+        "pinball_width": {
+          "aurc": 55.51974128730459,
+          "risk_at_cov80": 56.51511871180761,
+          "risk_at_cov90": 54.57386996301535,
+          "cov_at_risk15": 0.06123372948500283,
+          "spearman": -0.11773502342186133
+        }
+      },
+      "constraint_violation": {
+        "raw": 0.7659573909510886,
+        "both": 0.0
+      }
+    },
+    "FD003": {
+      "n_units": 100,
+      "n_windows": 13696,
+      "postprocess": {
+        "raw": {
+          "rmse_raw_truth": 84.22815466560783,
+          "phm08_raw": 3669800915533.1577,
+          "mean_error": -49.71529307794348,
+          "rmse_capped_truth": 12.037307619952923
+        },
+        "monotone": {
+          "rmse_raw_truth": 85.39543118646418,
+          "phm08_raw": 3753081210720.2646,
+          "mean_error": -49.26668807153947,
+          "rmse_capped_truth": 13.91497332199548
+        },
+        "recal": {
+          "rmse_raw_truth": 89.09676045484808,
+          "phm08_raw": 5481209403879.494,
+          "mean_error": -55.57297121928396,
+          "rmse_capped_truth": 14.492450630579365
+        },
+        "both": {
+          "rmse_raw_truth": 90.03000908603086,
+          "phm08_raw": 5516446402262.295,
+          "mean_error": -55.70872650622764,
+          "rmse_capped_truth": 16.440671014110702
+        }
+      },
+      "gating": {
+        "ensemble_std": {
+          "aurc": 106.91504691668204,
+          "risk_at_cov80": 92.18513750535992,
+          "risk_at_cov90": 87.77240255081807,
+          "cov_at_risk15": 0.0,
+          "spearman": -0.44274187933318465
+        },
+        "pinball_width": {
+          "aurc": 107.40848711517856,
+          "risk_at_cov80": 93.14322907829602,
+          "risk_at_cov90": 88.30517781907466,
+          "cov_at_risk15": 7.301401869158878e-05,
+          "spearman": -0.47019771456888904
+        }
+      },
+      "constraint_violation": {
+        "raw": 0.6505111650920682,
+        "both": 0.0
+      }
+    },
+    "FD004": {
+      "n_units": 237,
+      "n_windows": 34081,
+      "postprocess": {
+        "raw": {
+          "rmse_raw_truth": 97.50096711850615,
+          "phm08_raw": 344200377573803.56,
+          "mean_error": -61.047569150757624,
+          "rmse_capped_truth": 13.513138510974725
+        },
+        "monotone": {
+          "rmse_raw_truth": 99.2171329758453,
+          "phm08_raw": 358302360702787.4,
+          "mean_error": -61.24648562230672,
+          "rmse_capped_truth": 16.742901522899032
+        },
+        "recal": {
+          "rmse_raw_truth": 102.7647714119085,
+          "phm08_raw": 514645720893265.94,
+          "mean_error": -67.1708906098349,
+          "rmse_capped_truth": 16.1333457292651
+        },
+        "both": {
+          "rmse_raw_truth": 104.12528358439846,
+          "phm08_raw": 518677257105875.6,
+          "mean_error": -67.79611084664856,
+          "rmse_capped_truth": 19.144790289967972
+        }
+      },
+      "gating": {
+        "ensemble_std": {
+          "aurc": 129.3701189722515,
+          "risk_at_cov80": 107.14769624748065,
+          "risk_at_cov90": 101.96743674305677,
+          "cov_at_risk15": 0.0,
+          "spearman": -0.5247767889178466
+        },
+        "pinball_width": {
+          "aurc": 124.44989679056737,
+          "risk_at_cov80": 107.63089343352185,
+          "risk_at_cov90": 102.11153287734952,
+          "cov_at_risk15": 2.9341862034564715e-05,
+          "spearman": -0.5427212252982446
+        }
+      },
+      "constraint_violation": {
+        "raw": 0.6865891817103565,
+        "both": 0.0
+      }
+    }
+  }
+}

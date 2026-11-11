@@ -1,6 +1,6 @@
 # CMAPSS 涡扇发动机退化建模与 RUL 预测（N2）
 
-![tests](https://img.shields.io/badge/tests-28%20passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-73%20passed-brightgreen)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![torch](https://img.shields.io/badge/torch-2.10%2Bcpu-red)
 
@@ -122,6 +122,18 @@ NASA PCoE「Turbofan Engine Degradation Simulation」（Saxena & Goebel 2008）�
 - **区间校准**（fig23）：90% 名义覆盖——共形-对称 0.890/0.915/0.923/0.910（4/4 落入
   0.90±0.05，比 naive 窄 14–23%）；pinball 最窄（25.6–42.2）但 FD003 覆盖 0.810 欠覆盖。
 
+**v1.3 深化（scripts/12–15）：**
+
+- **pinball+共形二段缩放**（fig24）：FD003 欠覆盖 0.810 → **0.920**（CQR Q=5.81 / λ=1.45），
+  宽度 37 仍比共形-对称 57 窄 35%；已准子集 Q=0/λ=1 原样通过——二段缩放是"免费保险"。
+  分层共形（协变量自适应）全面劣于宽度自适应。
+- **在线后处理三件套全负结果**（fig26）：单调修复违反率 0.65–0.77→0.000 但 RMSE +4~7%
+  （被禁止的"向上修订"恰是修正信号，均 err −28）；门控分数与误差**负**相关
+  （ρ −0.11~−0.54，早期 cap 饱和区低分歧大错），AURC 差于随机。
+- **域适应**（fig25）：CORAL/MMD 边际对齐在条件偏移下 2/3 对**负迁移**；
+  few-shot k=5 在最难对 FD002→FD004 上缺口 23.95→**4.71**（关闭 80%）且修掉
+  系统性偏晚——迁移缺口主要是条件映射偏移而非表征错位。
+
 <!-- RESULTS_TABLE_END -->
 
 评估协议：训练集内部按引擎 80/20 划分验证（早停）；测试集每引擎取**末窗**预测 RUL，
@@ -151,9 +163,13 @@ python scripts/08_cross_transfer.py   # v1.1 跨子集迁移 + oracle 对照（�
 python scripts/09_score_aware.py      # v1.2 损失×选模准则矩阵 + 偏差校正（重训，约 2 h）
 python scripts/10_attention.py        # v1.2 注意力池化 / Transformer vs LSTM（重训，约 2 h）
 python scripts/11_calibration.py      # v1.2 预测区间校准：共形/分位数（复用 09 权重 + pinball）
+python scripts/12_two_stage_intervals.py  # v1.3 pinball+共形二段缩放（复用 09/11 检查点）
+python scripts/13_domain_adaptation.py    # v1.3 CORAL/MMD/few-shot 域适应（重训，约 30 min）
+python scripts/14_online_gating.py        # v1.3 在线门控/单调修复/重标定（复用 03 权重）
+python scripts/15_summary_v13.py          # v1.3 汇总表
 ```
 
-或 `bash run_all.sh`。测试：`pytest tests -q`（28 项，纯合成信号，不依赖数据集）。
+或 `bash run_all.sh`。测试：`pytest tests -q`（73 项，纯合成信号，不依赖数据集）。
 
 ## 方法
 
@@ -172,9 +188,11 @@ python scripts/11_calibration.py      # v1.2 预测区间校准：共形/分位�
 
 ```
 src/cmapss_rul/    io / preprocessing / models / evaluation / plots
+                   / intervals / adaptation / online（v1.3）
 scripts/           00–05 流水线（校验/EDA/基线/深度/误差分析/汇总图）
+                   06–08 v1.1 · 09–11 v1.2 · 12–15 v1.3
 configs/           config.yaml
-tests/             28 项单测（合成信号 + 分位数损失/共形覆盖/模型形状）
+tests/             73 项单测（合成信号 + 分位数/共形/对齐损失/在线后处理）
 reports/           基准评测报告-N2.md / 工作记录-N2.md
 results/           metrics/（json）+ figures/（png）
 ```

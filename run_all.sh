@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# N2 全流水线：校验 → EDA → 基线 → 深度 → 误差分析 → 汇总图 → v1.1 深化（滚动/集成/迁移）→ v1.2 深化（分数选模/注意力/校准）
+# N2 全流水线：校验 → EDA → 基线 → 深度 → 误差分析 → 汇总图 → v1.1 深化（滚动/集成/迁移）→ v1.2 深化（分数选模/注意力/校准）→ v1.3 深化（二段缩放/域适应/在线门控）
 set -e
 cd "$(dirname "$0")"
 PY="${PY:-python}"
@@ -16,5 +16,9 @@ PY="${PY:-python}"
 "$PY" scripts/09_score_aware.py
 "$PY" scripts/10_attention.py
 "$PY" scripts/11_calibration.py
+"$PY" scripts/12_two_stage_intervals.py
+"$PY" scripts/13_domain_adaptation.py
+"$PY" scripts/14_online_gating.py
+"$PY" scripts/15_summary_v13.py
 "$PY" -m pytest tests -q
 echo "ALL DONE"
